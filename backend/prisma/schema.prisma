@@ -1,0 +1,19 @@
+// npx prisma migrate dev --name <migration_name>  Run this command to update the database schema after making changes to this file.
+// npx prisma generate  Run this command to regenerate the Prisma Client after making changes to this file.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String   // Since there is no '?' after the type, this field is required and cannot be null in the database.
+  avatar    String?  //'?' indicates that this field is optional, meaning it can be null in the database.
+  credits   Int      @default(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
