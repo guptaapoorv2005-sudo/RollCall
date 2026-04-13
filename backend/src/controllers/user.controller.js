@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const generateRefreshAndAccessToken = (userId) => {
     const accessToken = jwt.sign(
@@ -148,4 +149,189 @@ const loginUser = asyncHandler(async (req, res) => {
     )
 });
 
-export { registerUser, loginUser };
+const logoutUser = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    await Prisma.user.update({
+        where: { id: userId },
+        data: { refreshToken: null }
+    });
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+    };
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, null, "User logged out successfully"));
+});
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if(!refreshToken) {
+        throw new ApiError(401, "Refresh token is missing");
+    }
+
+    let decodedToken;
+    try {
+        decodedToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+        throw new ApiError(401, "Invalid refresh token");
+    }
+
+    const user = await Prisma.user.findUnique({
+        where: { id: decodedToken.id }
+    });
+
+    if(!user || user.refreshToken !== refreshToken) {
+        throw new ApiError(401, "Unauthorized: Invalid refresh token");
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = generateRefreshAndAccessToken(user.id);
+
+    await Prisma.user.update({
+        where: { id: user.id },
+        data: { refreshToken: newRefreshToken }
+    });
+
+    const accessTokenOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 24 * 60 * 60 * 1000 
+    }
+
+    const refreshTokenOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 10 * 24 * 60 * 60 * 1000 
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, accessTokenOptions)
+    .cookie("refreshToken", newRefreshToken, refreshTokenOptions)
+    .json( new ApiResponse(200, null, "Access token refreshed successfully") );
+});
+
+const getCurrentUser = asyncHandler(async (req,res)=>{
+    return res
+    .status(200)
+    .json(new ApiResponse( 200, req.user, "Current user fetched successfully"))
+});
+
+const changeAvatar = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    
+    const avatarLocalPath = req.file?.path;
+    if(!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required");
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+    if(!avatar) {
+        throw new ApiError(500, "Failed to upload avatar");
+    }
+
+    await deleteFromCloudinary(req.user.avatar); 
+
+    const user = await Prisma.user.update({
+        where: { id: userId },
+        data: { avatar: avatar.url }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
+
+const deleteAvatar = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    await deleteFromCloudinary(req.user.avatar);
+
+    const user = await Prisma.user.update({
+        where: { id: userId },
+        data: { avatar: null }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Avatar deleted successfully"));
+});
+
+const updateName = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { name } = req.body;
+    if(!name?.trim()) {
+        throw new ApiError(400, "Name is required");
+    }
+
+    const user = await Prisma.user.update({
+        where: { id: userId },
+        data: { name }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Name updated successfully"));
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+    if(!currentPassword?.trim() || !newPassword?.trim()) {
+        throw new ApiError(400, "Current and new passwords are required");
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, req.user.password);
+
+    if(!isPasswordValid) {
+        throw new ApiError(401, "Current password is incorrect");
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    const user = await Prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Password updated successfully"));
+});
+
+const deleteUser = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    await deleteFromCloudinary(req.user.avatar);
+
+    await Prisma.user.delete({
+        where: { id: userId }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, null, "User deleted successfully"));
+});
+
+export {
+    registerUser, 
+    loginUser, 
+    logoutUser, 
+    refreshAccessToken, 
+    getCurrentUser, 
+    changeAvatar, 
+    deleteAvatar, 
+    updateName, 
+    changePassword, 
+    deleteUser 
+};

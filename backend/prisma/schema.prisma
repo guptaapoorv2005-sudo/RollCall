@@ -15,7 +15,7 @@ model User {
   name         String
   avatar       String?
   credits      Int      @default(20)
-  refreshToken String   @default("")
+  refreshToken String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
