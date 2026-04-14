@@ -16,11 +16,14 @@ app.use(express.urlencoded({extended: true}));
 app.use(express.static('public'));
 
 // Routes Import
-import healthCheckRoutes from './routes/healthCheck.routes.js';
+import healthCheckRouter from './routes/healthCheck.routes.js';
+import userRouter from './routes/user.routes.js';
+import likeRouter from './routes/like.routes.js';
 
 // Routes declare
-app.use('/api/v1/health', healthCheckRoutes);
-
+app.use('/api/v1/health', healthCheckRouter);
+app.use('/api/v1/users', userRouter);
+app.use('/api/v1/likes', likeRouter);
 
 // error middleware (last)
 app.use(errorHandler)

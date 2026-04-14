@@ -7,4 +7,4 @@ const healthCheck = (req, res) => {
     .json(new ApiResponse(200, null, "Server is running fine!"));
 }
 
-export { healthCheck }
+export default healthCheck
