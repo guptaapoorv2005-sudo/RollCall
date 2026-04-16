@@ -35,7 +35,8 @@ model Project {
   userPrompt         String   @default("")
   aspectRatio        String   @default("9:16")
   targetLength       Int      @default(5)
-  uploadedImages     String[]
+  productImage       String
+  modelImage         String
   generatedImage     String   @default("")
   generatedVideo     String   @default("")
   isGenerating       Boolean  @default(false)
