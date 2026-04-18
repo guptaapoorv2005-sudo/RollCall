@@ -19,11 +19,15 @@ app.use(express.static('public'));
 import healthCheckRouter from './routes/healthCheck.routes.js';
 import userRouter from './routes/user.routes.js';
 import adminRouter from './routes/admin.routes.js';
+import teacherRouter from './routes/teacher.routes.js';
+import studentRouter from './routes/student.routes.js';
 
 // Routes declare
 app.use('/api/v1/health', healthCheckRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/teacher', teacherRouter);
+app.use('/api/v1/student', studentRouter);
 
 // error middleware (last)
 app.use(errorHandler)
