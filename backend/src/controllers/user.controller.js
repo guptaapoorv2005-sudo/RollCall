@@ -4,7 +4,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const generateRefreshAndAccessToken = (userId) => {
     const accessToken = jwt.sign(
@@ -224,47 +223,6 @@ const getCurrentUser = asyncHandler(async (req,res)=>{
     return res
     .status(200)
     .json(new ApiResponse( 200, req.user, "Current user fetched successfully"))
-});
-
-const changeAvatar = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    
-    const avatarLocalPath = req.file?.path;
-    if(!avatarLocalPath) {
-        throw new ApiError(400, "Avatar file is required");
-    }
-
-    const avatar = await uploadOnCloudinary(avatarLocalPath);
-
-    if(!avatar) {
-        throw new ApiError(500, "Failed to upload avatar");
-    }
-
-    await deleteFromCloudinary(req.user.avatar); 
-
-    const user = await Prisma.user.update({
-        where: { id: userId },
-        data: { avatar: avatar.url }
-    });
-
-    return res
-        .status(200)
-        .json(new ApiResponse(200, user, "Avatar updated successfully"));
-});
-
-const deleteAvatar = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-
-    await deleteFromCloudinary(req.user.avatar);
-
-    const user = await Prisma.user.update({
-        where: { id: userId },
-        data: { avatar: null }
-    });
-
-    return res
-        .status(200)
-        .json(new ApiResponse(200, user, "Avatar deleted successfully"));
 });
 
 const updateName = asyncHandler(async (req, res) => {
