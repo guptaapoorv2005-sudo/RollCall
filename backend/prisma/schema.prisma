@@ -20,13 +20,14 @@ enum AttendanceStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(STUDENT)
-  classId   String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         Role     @default(STUDENT)
+  classId      String?
+  refreshToken String?
+  createdAt    DateTime @default(now())
 
   // Relations
   class               Class?   @relation(fields: [classId], references: [id])
@@ -39,6 +40,8 @@ model Subject {
   name String
 
   assignments TeachingAssignment[]
+
+  @@unique([name])
 }
 
 model Class {
@@ -47,6 +50,8 @@ model Class {
 
   assignments TeachingAssignment[]
   students    User[]   
+
+  @@unique([name])
 }
 
 model TeachingAssignment {

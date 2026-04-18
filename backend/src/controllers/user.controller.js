@@ -84,7 +84,7 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(201,
             {
-                id: newUser.id, email: newUser.email, name: newUser.name, credits: newUser.credits
+                id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, classId: newUser.classId
             },
             "User registered successfully"
         ) 
@@ -141,7 +141,7 @@ const loginUser = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(200, 
             {
-                id: user.id, email: user.email, name: user.name, credits: user.credits, avatar: user.avatar
+                id: user.id, email: user.email, name: user.name, role: user.role, classId: user.classId
             }, 
             "User logged in successfully"
         )
@@ -270,8 +270,6 @@ const changePassword = asyncHandler(async (req, res) => {
 const deleteUser = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
-    await deleteFromCloudinary(req.user.avatar);
-
     await Prisma.user.delete({
         where: { id: userId }
     });
@@ -286,9 +284,7 @@ export {
     loginUser, 
     logoutUser, 
     refreshAccessToken, 
-    getCurrentUser, 
-    changeAvatar, 
-    deleteAvatar, 
+    getCurrentUser,
     updateName, 
     changePassword, 
     deleteUser 
