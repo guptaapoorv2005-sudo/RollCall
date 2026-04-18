@@ -1,9 +1,72 @@
-import { PrismaClient } from "@prisma/client";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { prisma } from "../utils/prismaClient.js";
+import { Role } from "@prisma/client";
+import bcrypt from "bcrypt";
 
-const prisma = new PrismaClient();
+const createTeacher = asyncHandler(async (req, res) => {
+    const { name, email, password } = req.body;
+
+    if(!name?.trim() || !email?.trim() || !password?.trim()) {
+        throw new ApiError(400, "Name, email, and password are required");
+    }
+
+    if(password.trim().length < 6) {
+        throw new ApiError(400, "Password must be at least 6 characters");
+    }
+
+    const existingUser = await prisma.user.findUnique({
+        where: { email }
+    });
+
+    if(existingUser) {
+        throw new ApiError(409, "User with this email already exists");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const teacher = await prisma.user.create({
+        data: {
+            name,
+            email,
+            password: hashedPassword,
+            role: Role.TEACHER
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true
+        }
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, teacher, "Teacher created successfully"));
+});
+
+const getTeachers = asyncHandler(async (req, res) => {
+    const teachers = await prisma.user.findMany({
+        where: {
+            role: Role.TEACHER
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            createdAt: true
+        },
+        orderBy: {
+            createdAt: "desc"
+        }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, teachers, "Teachers retrieved successfully"));
+});
 
 const createSubject = asyncHandler(async (req, res) => {
     const { name } = req.body;
@@ -156,6 +219,8 @@ const getTeachingAssignments = asyncHandler(async (req, res) => {
 
 
 export {
+    createTeacher,
+    getTeachers,
     createSubject,
     deleteSubject,
     updateSubject,

@@ -4,9 +4,17 @@ import cookieParser from 'cookie-parser'
 import { errorHandler } from './middlewares/error.middleware.js';
 
 const app = express();
+const configuredCorsOrigin = process.env.CORS_ORIGIN?.trim();
+const resolvedCorsOrigin =
+  !configuredCorsOrigin || configuredCorsOrigin === '*'
+    ? true
+    : configuredCorsOrigin
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,
+  origin: resolvedCorsOrigin,
   credentials: true
 }));
 

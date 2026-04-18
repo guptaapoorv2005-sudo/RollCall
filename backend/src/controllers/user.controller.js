@@ -1,9 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma as Prisma } from "../utils/prismaClient.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { Role } from "@prisma/client";
 
 const generateRefreshAndAccessToken = (userId) => {
     const accessToken = jwt.sign(
@@ -29,13 +30,48 @@ const generateRefreshAndAccessToken = (userId) => {
     return { accessToken, refreshToken };
 };
 
-const Prisma = new PrismaClient();
+const normalizeSelfSignupRole = (role) => {
+    if (!role) {
+        return Role.STUDENT;
+    }
+
+    const normalizedRole = String(role).trim().toUpperCase();
+
+    if (normalizedRole === Role.STUDENT) {
+        return Role.STUDENT;
+    }
+
+    throw new ApiError(403, "Public signup only allows STUDENT accounts");
+};
 
 const registerUser = asyncHandler(async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, name, role, className } = req.body;
 
     if(!email?.trim() || !password?.trim() || !name?.trim()) {
         throw new ApiError(400, "All fields are required");
+    }
+
+    const signupRole = normalizeSelfSignupRole(role);
+    const normalizedClassName = String(className || "").trim();
+
+    if(signupRole === Role.STUDENT && !normalizedClassName) {
+        throw new ApiError(400, "Class name is required");
+    }
+
+    const existingClass = await Prisma.class.findFirst({
+        where: {
+            name: {
+                equals: normalizedClassName,
+                mode: "insensitive"
+            }
+        },
+        select: {
+            id: true
+        }
+    });
+
+    if(signupRole === Role.STUDENT && !existingClass) {
+        throw new ApiError(404, "Class not found. Please enter an existing class name.");
     }
 
     const existingUser = await Prisma.user.findUnique({ //findUnique is used to find a single record that matches the specified criteria. It returns the record if found, or null if no matching record is found.
@@ -52,7 +88,9 @@ const registerUser = asyncHandler(async (req, res) => {
         data: {
             email,
             password: hashedPassword,
-            name
+            name,
+            role: signupRole,
+            classId: existingClass?.id || null
         }
     });
 

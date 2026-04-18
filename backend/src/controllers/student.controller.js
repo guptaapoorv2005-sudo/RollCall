@@ -1,8 +1,7 @@
-import { AttendanceStatus, PrismaClient } from "@prisma/client";
+import { AttendanceStatus } from "@prisma/client";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
-const prisma = new PrismaClient();
+import { prisma } from "../utils/prismaClient.js";
 
 const getMyAttendance = asyncHandler(async (req, res) => {
     const studentId = req.user.id;

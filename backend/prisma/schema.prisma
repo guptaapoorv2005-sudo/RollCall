@@ -1,4 +1,4 @@
-// npx prisma migrate dev --name <migration_name>  Run this command to update the database schema after making changes to this file.
+// Run this command to update the database schema after making changes to this file.
 // npx prisma generate  Run this command to regenerate the Prisma Client after making changes to this file.
 generator client {
   provider = "prisma-client-js"

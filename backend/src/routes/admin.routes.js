@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { rollCheck } from "../middlewares/rollCheck.middleware.js";
-import { createClass, createSubject, createTeachingAssignment, deleteClass, deleteSubject, getClasses, getSubjects, getTeachingAssignments, updateClass, updateSubject } from "../controllers/admin.controller.js";
+import { createClass, createSubject, createTeacher, createTeachingAssignment, deleteClass, deleteSubject, getClasses, getSubjects, getTeachers, getTeachingAssignments, updateClass, updateSubject } from "../controllers/admin.controller.js";
 
 const router = Router();
 
@@ -23,6 +23,10 @@ router.route("/classes")
 router.route("/classes/:id")
     .delete(deleteClass)
     .patch(updateClass);
+
+router.route("/teachers")
+    .post(createTeacher)
+    .get(getTeachers);
 
 router.route("/teaching-assignments")
     .post(createTeachingAssignment)

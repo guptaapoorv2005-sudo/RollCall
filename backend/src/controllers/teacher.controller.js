@@ -1,9 +1,8 @@
-import { AttendanceStatus, PrismaClient, Role } from "@prisma/client";
+import { AttendanceStatus, Role } from "@prisma/client";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-
-const prisma = new PrismaClient();
+import { prisma } from "../utils/prismaClient.js";
 
 const normalizeToUtcDateStart = (inputDate) => {
     const parsedDate = new Date(inputDate);
@@ -18,6 +17,128 @@ const normalizeToUtcDateStart = (inputDate) => {
         parsedDate.getUTCDate()
     ));
 };
+
+const getAssignments = asyncHandler(async (req, res) => {
+    const assignments = await prisma.teachingAssignment.findMany({
+        where: {
+            teacherId: req.user.id
+        },
+        include: {
+            subject: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            },
+            class: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            }
+        },
+        orderBy: [
+            {
+                class: {
+                    name: "asc"
+                }
+            },
+            {
+                subject: {
+                    name: "asc"
+                }
+            }
+        ]
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, assignments, "Assignments retrieved successfully"));
+});
+
+const getStudentsByAssignment = asyncHandler(async (req, res) => {
+    const assignmentId = req.params.assignmentId?.trim();
+
+    if (!assignmentId) {
+        throw new ApiError(400, "Assignment ID is required");
+    }
+
+    const assignment = await prisma.teachingAssignment.findFirst({
+        where: {
+            id: assignmentId,
+            teacherId: req.user.id
+        },
+        select: {
+            classId: true
+        }
+    });
+
+    if (!assignment) {
+        throw new ApiError(404, "Teaching assignment not found");
+    }
+
+    const students = await prisma.user.findMany({
+        where: {
+            classId: assignment.classId,
+            role: Role.STUDENT
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            classId: true
+        },
+        orderBy: {
+            name: "asc"
+        }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, students, "Students retrieved successfully"));
+});
+
+const getStudentsByClass = asyncHandler(async (req, res) => {
+    const classId = req.params.classId?.trim() || req.query.classId?.trim();
+
+    if (!classId) {
+        throw new ApiError(400, "Class ID is required");
+    }
+
+    const classAssignment = await prisma.teachingAssignment.findFirst({
+        where: {
+            teacherId: req.user.id,
+            classId
+        },
+        select: {
+            id: true
+        }
+    });
+
+    if (!classAssignment) {
+        throw new ApiError(403, "You are not assigned to this class");
+    }
+
+    const students = await prisma.user.findMany({
+        where: {
+            classId,
+            role: Role.STUDENT
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            classId: true
+        },
+        orderBy: {
+            name: "asc"
+        }
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, students, "Students retrieved successfully"));
+});
 
 const markAttendance = asyncHandler(async (req, res) => {
     const { assignmentId, date, records } = req.body;
@@ -138,5 +259,8 @@ const markAttendance = asyncHandler(async (req, res) => {
 });
 
 export {
+    getAssignments,
+    getStudentsByAssignment,
+    getStudentsByClass,
     markAttendance
 };
